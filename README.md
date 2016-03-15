@@ -12,9 +12,9 @@ only been tested in Python 2.7.
 ##Creating a Configuration Object
 ```python
 from otz import Calibration
-settings = r'[...]/example Voltage Settings.tzt'
-x_cal = r'[...]/example Voltage X data.tzt'
-y_cal = r'[...]/example Voltage Y data.tzt'
+settings = r'[...]/example Voltage Settings.txt'
+x_cal = r'[...]/example Voltage X data.txt'
+y_cal = r'[...]/example Voltage Y data.txt'
 stage_freq = 150
 cal = Calibration(settings, stage_freq, x_cal, y_cal)
 ```
