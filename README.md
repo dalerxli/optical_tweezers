@@ -31,7 +31,7 @@ cal.xplot.show()
 
 ##Filtering with PSD
 ```python
-fildered_data = c.band_stop(20,65)
+fildered_data = cal.band_stop(20,65)
 # View filtered and overlay unfiltered
-c.plot_psd(vdat = filtered_data, plot_orig=True)
+cal.plot_psd(vdat = filtered_data, plot_orig=True)
 ```
