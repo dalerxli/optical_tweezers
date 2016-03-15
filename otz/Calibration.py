@@ -108,10 +108,13 @@ class Calibration:
             order=order,low=low_f,high=high_f))
         fig.show()
     
-    def plot_psd(self, axis='x', vdat=None, plot_orig=False):
+    def psd(self, axis='x', vdat=None):
         if vdat is None:
             vdat = self.ts[axis]
-        f, psd = sig.periodogram(vdat, self.rate)
+        return sig.periodogram(vdat, self.rate)
+
+    def plot_psd(self, axis='x', vdat=None, plot_orig=False):
+        f, psd = self.psd(axis, vdat)
         fig = plt.figure()
         psdplt = fig.add_subplot(111)
         psdplt.loglog(f, psd, basey=np.e)
