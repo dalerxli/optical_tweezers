@@ -45,17 +45,19 @@ class Beam:
         def theta(phi):
             return np.arctan2(R*np.sin(phi),d-R*np.cos(phi))
         def theta_prime(phi):
-            return theta(phi-phi_prime)
+            return theta(phi) + phi_prime
         def theta2(phi):
-            return np.arcsin(np.sin(phi+theta_prime(phi))/n)
+            return np.arcsin(np.sin(phi+theta(phi))/n)
         def delta_theta(phi):
             return 2*theta2(phi)
         def p(phi):
             return self.profile(phi)*h*c/self.wavelength
         def dF_r(phi):
-            return -p(phi)*(np.sin(theta_prime(phi))-np.sin(theta_prime(phi)+delta_theta(phi)))
+            angle = theta_prime(phi)
+            return -p(angle)*(np.sin(angle)-np.sin(angle+delta_theta(phi)))
         def dF_z(phi):
-            return -p(phi)*(np.cos(theta_prime(phi))-np.cos(theta_prime(phi)+delta_theta(phi)))
+            angle = theta_prime(phi)
+            return -p(angle)*(np.cos(angle)-np.cos(angle+delta_theta(phi)))
         F_r = sp.integrate.quad(dF_r, -np.pi/2.0, np.pi/2.0)
         F_z = sp.integrate.quad(dF_z, -np.pi/2.0, np.pi/2.0)
         return (F_r, F_z)
@@ -72,5 +74,5 @@ class Beam:
             bead.r = dist
             return self.force(bead)[0][0]
         force_r = [restoring_force(dist) for dist in r]
-        V = sp.integrate.cumtrapz(force_r, r)
+        V = -sp.integrate.cumtrapz(force_r, r)
         return (r[:-1],V)

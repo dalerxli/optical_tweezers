@@ -1,12 +1,10 @@
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, basinhopping
 import matplotlib.pyplot as plt
 import scipy.signal as sig
+from otz.templates import line, log_psd
 
 plt.ioff()
-
-def line(x, a, b):
-    return a*x+b
 
 class Calibration:
     step_to_dist = {
@@ -36,31 +34,28 @@ class Calibration:
                 setdict[key] = float(val)
         return setdict
 
-    @property
     def xplot(self):
         xfig = plt.figure()
         xplt = xfig.add_subplot(111)
         vdat = self.ts['x']
-        xdat = self.tdata
-        xplt.plot(xdat, vdat)
+        xplt.plot(self.tdata, vdat)
         xplt.set_xlabel("Time (s)")
         xplt.set_ylabel("Voltage (V)")
         xplt.set_title("X Sensitivity Calibration")
+        xfig.show()
         return xfig
 
-    @property
     def yplot(self):
         yfig = plt.figure()
         yplt = yfig.add_subplot(111)
         vdat = self.ts['y']
-        ydat = self.tdata
-        yplt.plot(ydat, vdat)
+        yplt.plot(self.tdata, vdat)
         yplt.set_xlabel("Time (s)")
         yplt.set_ylabel("Voltage (V)")
         yplt.set_title("Y Sensitivity Calibration")
         return yfig
 
-    def sensitivity(self, axis, direction, start, stop, vdat=None):
+    def sensitivity(self, axis, direction, lims=None, vdat=None):
         """
         Calculate sensitivity from voltage data.
         TODO: Automatically compute start and stop.
@@ -70,18 +65,26 @@ class Calibration:
             vdat = self.ts[axis]
         stepdist = Calibration.step_to_dist[axis][direction]
         sampledist = stepdist / self.rate * self.step_freq
-        params, cov = curve_fit(line, np.arange(len(vdat[start:stop])), vdat[start:stop])
-        slope = params[0]
+        if lims is None:
+            lims = [np.argmax(vdat), np.argmin(vdat)]
+            start = min(lims)
+            stop = max(lims)
+
+            center = int((stop-start)/2+start)
+
+            width = int((stop-start)/4)
+
+            lower = center-width
+            upper = center+width
+        else:
+            lower = lims[0]
+            upper = lims[1]
+        params, cov = curve_fit(
+                line, np.arange(upper-lower), vdat[lower:upper] )
+        sensitivity = params[0]/sampledist
         uncertainty = np.sqrt(cov[0,0])/sampledist
-        return (slope/sampledist, uncertainty)
 
-    @property
-    def x_sensitivity(self):
-        pass
-
-    @property
-    def y_sensitivity(self):
-        pass
+        return (sensitivity, uncertainty)
 
     def band_stop(self, low_f, high_f, axis='x', order=6):
         f_nyq = self.rate / 2
@@ -106,7 +109,7 @@ class Calibration:
         xplt.set_title(
             "Order-{order} Butterworth Bandstop Filter ({low}Hz-{high}Hz)".format(
             order=order,low=low_f,high=high_f))
-        fig.show()
+        return fig
     
     def psd(self, axis='x', vdat=None):
         if vdat is None:
@@ -124,4 +127,4 @@ class Calibration:
         psdplt.set_title("PSD")
         psdplt.set_xlabel("Frequency ($Hz$)")
         psdplt.set_ylabel("PSD ($V^2/Hz$)")
-        fig.show()
+        return fig
