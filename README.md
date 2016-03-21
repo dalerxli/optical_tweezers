@@ -35,3 +35,12 @@ fildered_data = cal.band_stop(20,65)
 # View filtered and overlay unfiltered
 cal.plot_psd(vdat = filtered_data, plot_orig=True)
 ```
+
+##Plotting Theoretical Potential Well
+```python
+from otz import Beam, Bead
+bead = Bead(1e-6)
+beam = Beam(950e-9)
+r, V = beam.r_potential(bead, z=2e-6, r_lim=3e-6)
+plt.plot(r,V)
+```
