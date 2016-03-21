@@ -1,8 +1,10 @@
 from otz import Calibration
 from otz.templates import log_psd
 import matplotlib.pyplot as plt
+import os
 
-datadir = r'/home/grantland/data/'
+home = os.environ['HOME']
+datadir = home + r'/data/'
 xcaldata = datadir + r'cal/100_X Voltage Data.txt'
 ycaldata = datadir + r'cal/100_Y Voltage Data.txt'
 settings = datadir + r'cal/100_Y Voltage Settings.txt'

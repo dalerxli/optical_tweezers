@@ -37,8 +37,8 @@ class Calibration:
     def xplot(self):
         xfig = plt.figure()
         xplt = xfig.add_subplot(111)
-        vdat = self.ts['x']
-        xplt.plot(self.tdata, vdat)
+        vdata = self.ts['x']
+        xplt.plot(self.tdata, vdata)
         xplt.set_xlabel("Time (s)")
         xplt.set_ylabel("Voltage (V)")
         xplt.set_title("X Sensitivity Calibration")
@@ -48,25 +48,25 @@ class Calibration:
     def yplot(self):
         yfig = plt.figure()
         yplt = yfig.add_subplot(111)
-        vdat = self.ts['y']
-        yplt.plot(self.tdata, vdat)
+        vdata = self.ts['y']
+        yplt.plot(self.tdata, vdata)
         yplt.set_xlabel("Time (s)")
         yplt.set_ylabel("Voltage (V)")
         yplt.set_title("Y Sensitivity Calibration")
         return yfig
 
-    def sensitivity(self, axis, direction, lims=None, vdat=None):
+    def sensitivity(self, axis, direction, lims=None, vdata=None):
         """
         Calculate sensitivity from voltage data.
         TODO: Automatically compute start and stop.
         Returns: Sensitivity in V/um and uncertainty
         """
-        if vdat is None:
-            vdat = self.ts[axis]
+        if vdata is None:
+            vdata = self.ts[axis]
         stepdist = Calibration.step_to_dist[axis][direction]
         sampledist = stepdist / self.rate * self.step_freq
         if lims is None:
-            lims = [np.argmax(vdat), np.argmin(vdat)]
+            lims = [np.argmax(vdata), np.argmin(vdata)]
             start = min(lims)
             stop = max(lims)
 
@@ -80,11 +80,22 @@ class Calibration:
             lower = lims[0]
             upper = lims[1]
         params, cov = curve_fit(
-                line, np.arange(upper-lower), vdat[lower:upper] )
+                line, np.arange(upper-lower), vdata[lower:upper] )
         sensitivity = params[0]/sampledist
         uncertainty = np.sqrt(cov[0,0])/sampledist
 
         return (sensitivity, uncertainty)
+
+    def stiffness(self, axis=None, method="PSD", vdata=None, skip=None):
+        if method=="PSD":
+            if vdata is None:
+                vdata = self.ts[axis]
+            f, psd = self.psd(vdata=vdata, skip=skip)
+            params, cov = curve_fit(
+                    log_psd, f, np.log10(psd))
+            return (params, cov)
+        else:
+            raise NotImplementedError("Method {0} not implemented".format(method))
 
     def band_stop(self, low_f, high_f, axis='x', order=6):
         f_nyq = self.rate / 2
@@ -92,16 +103,16 @@ class Calibration:
         band_high = high_f / f_nyq
         b, a = sig.butter(order, [band_low, band_high], btype='bandstop')
         w, h = sig.freqs(b, a)
-        vdat = self.ts[axis]
-        filtered = sig.lfilter(b,a,vdat)
+        vdata = self.ts[axis]
+        filtered = sig.lfilter(b,a,vdata)
         return filtered
 
     def plot_band_stop(self, low_f, high_f, axis='x', order=6, plot_orig=False):
         fig = plt.figure()
         xplt = fig.add_subplot(111)
-        vdat = self.ts[axis]
+        vdata = self.ts[axis]
         if plot_orig:
-            xplt.plot(self.tdata, vdat)
+            xplt.plot(self.tdata, vdata)
         filtered = self.band_stop(low_f, high_f, axis, order)
         xplt.plot(self.tdata, filtered)
         xplt.set_xlabel("Time (s)")
@@ -111,13 +122,20 @@ class Calibration:
             order=order,low=low_f,high=high_f))
         return fig
     
-    def psd(self, axis='x', vdat=None):
-        if vdat is None:
-            vdat = self.ts[axis]
-        return sig.periodogram(vdat, self.rate)
+    def psd(self, axis=None, vdata=None, low_f=2., skip=None):
+        if vdata is None:
+            vdata = self.ts[axis]
+        f, psd = sig.periodogram(vdata, self.rate)
+        if skip is not None:
+            skip_low = np.searchsorted(f, skip[0], side='left')
+            skip_high = np.searchsorted(f, skip[1], side='right')
+            f = np.concatenate((f[:skip_low],f[skip_high:]))
+            psd = np.concatenate((psd[:skip_low],psd[skip_high:]))
+        cutoff = np.searchsorted(f, low_f, side='left')
+        return f[cutoff:], psd[cutoff:]
 
-    def plot_psd(self, axis='x', vdat=None, plot_orig=False):
-        f, psd = self.psd(axis, vdat)
+    def plot_psd(self, axis=None, vdata=None, plot_orig=False):
+        f, psd = self.psd(axis, vdata)
         fig = plt.figure()
         psdplt = fig.add_subplot(111)
         psdplt.loglog(f, psd, basey=np.e)
