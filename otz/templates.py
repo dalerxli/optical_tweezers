@@ -5,3 +5,6 @@ def line(x, a, b):
 
 def log_psd(f, f_0, alpha):
     return np.log10(alpha) - np.log10(f**2 + f_0**2)
+
+def quadratic(x, k, y_0):
+    return k*x**2 + y_0

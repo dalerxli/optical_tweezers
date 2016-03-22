@@ -8,8 +8,8 @@ plt.ioff()
 
 class Calibration:
     step_to_dist = {
-            'x': {'f': 35.71, 'b': 25.64},
-            'y': {'f': 27.78, 'b': 37.04}
+            'x': {'f': 27.78, 'b': 37.04},
+            'y': {'f': 35.71, 'b': 25.64}
             }
     def __init__(self, settings_file, step_freq, cal_x_volt, cal_y_volt):
         self.settings = self.load_settings(settings_file)
@@ -86,13 +86,15 @@ class Calibration:
 
         return (sensitivity, uncertainty)
 
-    def stiffness(self, axis=None, method="PSD", vdata=None, skip=None):
+    def stiffness(self, axis=None, direction='f', method="PSD", vdata=None, skip=None):
         if method=="PSD":
             if vdata is None:
                 vdata = self.ts[axis]
             f, psd = self.psd(vdata=vdata, skip=skip)
             params, cov = curve_fit(
                     log_psd, f, np.log10(psd))
+            sensitivity = self.sensitivity(axis, direction, vdata=vdata[100:])[0]
+            print "Sensitivity: {0}".format(sensitivity)
             return (params, cov)
         else:
             raise NotImplementedError("Method {0} not implemented".format(method))
@@ -134,14 +136,18 @@ class Calibration:
         cutoff = np.searchsorted(f, low_f, side='left')
         return f[cutoff:], psd[cutoff:]
 
-    def plot_psd(self, axis=None, vdata=None, plot_orig=False):
+    def plot_psd(self, axis=None, vdata=None, plot_orig=False, fit=False, skip=None):
         f, psd = self.psd(axis, vdata)
         fig = plt.figure()
         psdplt = fig.add_subplot(111)
-        psdplt.loglog(f, psd, basey=np.e)
+        psdplt.loglog(f, psd)
         if plot_orig:
-            f, psd = sig.periodogram(self.ts[axis], self.rate)
-            psdplt.loglog(f, psd)
+            f_orig, psd = sig.periodogram(self.ts[axis], self.rate)
+            psdplt.loglog(f_orig, psd)
+        if fit:
+            (f_0, alpha), cov = self.stiffness(axis=axis,vdata=vdata,skip=skip)
+            logpsd = log_psd(f, f_0, alpha)
+            psdplt.loglog(f, 10**logpsd)
         psdplt.set_title("PSD")
         psdplt.set_xlabel("Frequency ($Hz$)")
         psdplt.set_ylabel("PSD ($V^2/Hz$)")

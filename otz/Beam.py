@@ -14,6 +14,9 @@ def uniform(max_angle, intensity):
     return profile
 
 def default_profile(angle):
+    flux = 1.48e18
+    solid_angle = 2*np.pi*(1-np.cos(np.pi/8))
+    dFlux = flux/solid_angle
     return uniform(np.pi/8.0, 1)(angle)
 
 class Bead:
@@ -35,6 +38,11 @@ class Beam:
         self.profile = profile
         self.wavelength = wavelength
     def force(self, bead):
+        """
+        WARNING: This function only returns the force in a 2d plane.
+        To return the true force in 3d, it needs to be modified to
+        integrate over azimuthal angle as well.
+        """
         r = bead.r
         z = bead.z
         n = bead.index
