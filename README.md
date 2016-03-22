@@ -2,7 +2,7 @@
 Analysis for Optical Tweezers
 
 ##Dependencies
-This software depends upon [NumPy](http://numpy.org), [SciPy](http://scipy.org) and [matplotlib](http://matplotlib.org/), and have
+This software depends upon [NumPy](http://numpy.org), [SciPy](http://scipy.org) and [matplotlib](http://matplotlib.org/), and has
 only been tested in Python 2.7.
 
 #Contents
