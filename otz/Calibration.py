@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from scipy.optimize import curve_fit, basinhopping
 import matplotlib.pyplot as plt
@@ -11,7 +12,8 @@ class Calibration:
             'x': {'f': 27.78, 'b': 37.04},
             'y': {'f': 35.71, 'b': 25.64}
             }
-    def __init__(self, settings_file, step_freq, cal_x_volt, cal_y_volt):
+    def __init__(self, settings_file, step_freq, cal_x_volt, cal_y_volt,
+            psd_file=None):
         self.settings = self.load_settings(settings_file)
         self.step_freq = step_freq
         self.cal_x_volt = np.loadtxt(cal_x_volt).astype(float)
@@ -20,6 +22,15 @@ class Calibration:
             'x': self.cal_x_volt[:,0],
             'y': self.cal_y_volt[:,1]
             }
+        if psd_file is not None:
+            psd_data = np.loadtxt(psd_file).astype(float)
+            self.psd = {
+                'f': np.power(psd_data[:,0],10),
+                'x': np.exp(psd_data[:,1]),
+                'y': np.exp(psd_data[:,2])
+                }
+        else:
+            self.psd = None
         self.rate = self.settings['Sample Rate']
 
     @property
@@ -90,7 +101,12 @@ class Calibration:
         if method=="PSD":
             if vdata is None:
                 vdata = self.ts[axis]
-            f, psd = self.psd(vdata=vdata, skip=skip)
+            if self.psd is None:
+                warnings.warn("Generating PSD from timestream data")
+                f, psd = self.psd_from_ts(vdata=vdata, skip=skip)
+            else:
+                f = self.psd['f']
+                psd = self.psd[axis]
             if stop is not None:
                 stop_index = np.searchsorted(f, stop, side='left')
                 f=f[:stop_index]
@@ -128,7 +144,7 @@ class Calibration:
             order=order,low=low_f,high=high_f))
         return fig
     
-    def psd(self, axis=None, vdata=None, low_f=2., skip=None):
+    def psd_from_ts(self, axis=None, vdata=None, low_f=2., skip=None):
         if vdata is None:
             vdata = self.ts[axis]
         f, psd = sig.periodogram(vdata, self.rate)
@@ -141,7 +157,7 @@ class Calibration:
         return f[cutoff:], psd[cutoff:]
 
     def plot_psd(self, axis=None, vdata=None, plot_orig=False, fit=False, skip=None,stop=None):
-        f, psd = self.psd(axis, vdata)
+        f, psd = self.psd_from_ts(axis, vdata)
         fig = plt.figure()
         psdplt = fig.add_subplot(111)
         psdplt.loglog(f, psd)
