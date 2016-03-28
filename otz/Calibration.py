@@ -86,11 +86,15 @@ class Calibration:
 
         return (sensitivity, uncertainty)
 
-    def stiffness(self, axis=None, direction='f', method="PSD", vdata=None, skip=None):
+    def stiffness(self, axis=None, direction='f', method="PSD", vdata=None, skip=None,stop=None):
         if method=="PSD":
             if vdata is None:
                 vdata = self.ts[axis]
             f, psd = self.psd(vdata=vdata, skip=skip)
+            if stop is not None:
+                stop_index = np.searchsorted(f, stop, side='left')
+                f=f[:stop_index]
+                psd=psd[:stop_index]
             params, cov = curve_fit(
                     log_psd, f, np.log10(psd))
             sensitivity = self.sensitivity(axis, direction, vdata=vdata[100:])[0]
@@ -136,7 +140,7 @@ class Calibration:
         cutoff = np.searchsorted(f, low_f, side='left')
         return f[cutoff:], psd[cutoff:]
 
-    def plot_psd(self, axis=None, vdata=None, plot_orig=False, fit=False, skip=None):
+    def plot_psd(self, axis=None, vdata=None, plot_orig=False, fit=False, skip=None,stop=None):
         f, psd = self.psd(axis, vdata)
         fig = plt.figure()
         psdplt = fig.add_subplot(111)
@@ -145,7 +149,7 @@ class Calibration:
             f_orig, psd = sig.periodogram(self.ts[axis], self.rate)
             psdplt.loglog(f_orig, psd)
         if fit:
-            (f_0, alpha), cov = self.stiffness(axis=axis,vdata=vdata,skip=skip)
+            (f_0, alpha), cov = self.stiffness(axis=axis,vdata=vdata,skip=skip,stop=stop)
             logpsd = log_psd(f, f_0, alpha)
             psdplt.loglog(f, 10**logpsd)
         psdplt.set_title("PSD")
