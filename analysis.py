@@ -63,12 +63,20 @@ bdata = {
         },
 }
 
+psd = {
+    100: datadir + r'psd100rz PSD Data.txt',
+    200: datadir + r'psd200rz PSD Data.txt',
+    300: datadir + r'psd300rz PSD Data.txt',
+    400: datadir + r'psd400rz PSD Data.txt',
+    500: datadir + r'psd500rz PSD Data.txt',
+}
+
 fcals = OrderedDict(sorted(
-    {key: Calibration(data['settings'], 150, data['xcaldata'], data['ycaldata'])
+    {key: Calibration(data['settings'], 150, data['xcaldata'], data['ycaldata'],psd[key])
             for key, data in fdata.iteritems()}.items()))
 
 bcals = OrderedDict(sorted(
-    {key: Calibration(data['settings'], 150, data['xcaldata'], data['ycaldata'])
+    {key: Calibration(data['settings'], 150, data['xcaldata'], data['ycaldata'],psd[key])
             for key, data in bdata.iteritems()}.items()))
 
 amps=[]

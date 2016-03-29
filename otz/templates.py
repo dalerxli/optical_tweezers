@@ -8,3 +8,6 @@ def log_psd(f, f_0, alpha):
 
 def quadratic(x, k, y_0):
     return k*x**2 + y_0
+
+def exp_psd(f, f_0, alpha):
+    return alpha/(f**2+f_0**2)

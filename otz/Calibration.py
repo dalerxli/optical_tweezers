@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit, basinhopping
 import matplotlib.pyplot as plt
 import scipy.signal as sig
-from otz.templates import line, log_psd
+from otz.templates import line, log_psd, exp_psd
 
 plt.ioff()
 
@@ -25,7 +25,7 @@ class Calibration:
         if psd_file is not None:
             psd_data = np.loadtxt(psd_file).astype(float)
             self.psd = {
-                'f': np.power(psd_data[:,0],10),
+                'f': np.power(10.,psd_data[:,0]),
                 'x': np.exp(psd_data[:,1]),
                 'y': np.exp(psd_data[:,2])
                 }
@@ -97,24 +97,25 @@ class Calibration:
 
         return (sensitivity, uncertainty)
 
-    def stiffness(self, axis=None, direction='f', method="PSD", vdata=None, skip=None,stop=None):
+    def stiffness(self, axis=None, direction='f', method="PSD", vdata=None,
+                  skip=None, start=None, stop=None):
         if method=="PSD":
-            if vdata is None:
-                vdata = self.ts[axis]
             if self.psd is None:
                 warnings.warn("Generating PSD from timestream data")
+                if vdata is None:
+                    vdata = self.ts[axis]
                 f, psd = self.psd_from_ts(vdata=vdata, skip=skip)
             else:
                 f = self.psd['f']
                 psd = self.psd[axis]
+            start_idx=None
+            stop_idx=None
             if stop is not None:
-                stop_index = np.searchsorted(f, stop, side='left')
-                f=f[:stop_index]
-                psd=psd[:stop_index]
+                stop_idx = np.searchsorted(f, stop, side='left')
+            if start is not None:
+                start_idx = np.searchsorted(f, start, side='left')
             params, cov = curve_fit(
-                    log_psd, f, np.log10(psd))
-            sensitivity = self.sensitivity(axis, direction, vdata=vdata[100:])[0]
-            print "Sensitivity: {0}".format(sensitivity)
+                    exp_psd, f[start_idx:stop_idx], psd[start_idx:stop_idx])
             return (params, cov)
         else:
             raise NotImplementedError("Method {0} not implemented".format(method))
@@ -156,7 +157,7 @@ class Calibration:
         cutoff = np.searchsorted(f, low_f, side='left')
         return f[cutoff:], psd[cutoff:]
 
-    def plot_psd(self, axis=None, vdata=None, plot_orig=False, fit=False, skip=None,stop=None):
+    def plot_psd_from_ts(self, axis=None, vdata=None, plot_orig=False, fit=False, skip=None, stop=None):
         f, psd = self.psd_from_ts(axis, vdata)
         fig = plt.figure()
         psdplt = fig.add_subplot(111)
@@ -168,6 +169,27 @@ class Calibration:
             (f_0, alpha), cov = self.stiffness(axis=axis,vdata=vdata,skip=skip,stop=stop)
             logpsd = log_psd(f, f_0, alpha)
             psdplt.loglog(f, 10**logpsd)
+        psdplt.set_title("PSD")
+        psdplt.set_xlabel("Frequency ($Hz$)")
+        psdplt.set_ylabel("PSD ($V^2/Hz$)")
+        return fig
+
+    def plot_psd(self, axis=None, fit=False, skip=None, start=None, stop=None):
+        f = self.psd['f']
+        start_idx=None
+        stop_idx=None
+        if start is not None:
+            start_idx = np.searchsorted(f, start, side='left')
+        if stop is not None:
+            stop_idx = np.searchsorted(f, stop, side='left')
+        psd = self.psd[axis]
+        fig = plt.figure()
+        psdplt = fig.add_subplot(111)
+        psdplt.loglog(f[start_idx:stop_idx], psd[start_idx:stop_idx])
+        if fit:
+            (f_0, alpha), cov = self.stiffness(axis=axis,skip=skip,start=start,stop=stop)
+            exppsd = exp_psd(f[start_idx:stop_idx], f_0, alpha)
+            psdplt.loglog(f[start_idx:stop_idx], exppsd)
         psdplt.set_title("PSD")
         psdplt.set_xlabel("Frequency ($Hz$)")
         psdplt.set_ylabel("PSD ($V^2/Hz$)")
